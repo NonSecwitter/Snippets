@@ -34,6 +34,49 @@ public:
 	virtual void print() = 0;
 };
 
+#include <iostream>
+#include <limits>
+
+Serialized::Serialized()
+{
+
+}
+
+Serialized::~Serialized()
+{
+
+}
+
+void Serialized::setSerialized(std::string _serialized)
+{
+	serialized = _serialized;
+}
+
+std::string Serialized::getSerialized()
+{
+	return serialized;
+}
+
+void Serialized::serialize() 
+{
+	std::vector<std::string>::iterator vecIt;
+	std::vector<std::vector<std::string>*>::iterator vecVecIt;
+
+	//Iterate over outter vector adding category delimiter after each inner vector
+	for (vecVecIt = vecVec.begin(); vecVecIt != vecVec.end(); ++vecVecIt)
+	{
+		//Iterate over inner vectors, adding element delimiter after each string 
+		//for (vecIt = (*vecVecIt)->begin(); vecIt != (*vecVecIt)->end(); ++vecIt)
+		vecIt = (*vecVecIt)->begin();
+		while (vecIt != (*vecVecIt)->end())
+		{
+			serialized += *vecIt + elemDelim;
+			vecIt++;
+		}
+		serialized += categoryDelim;
+	}
+}
+
 void Serialized::deserialize()
 {
 	if (!serialized.empty())
@@ -89,4 +132,33 @@ void Serialized::deserialize()
 				vecVecIt++;
 		}
 	}
+}
+
+void Serialized::deserialize(std::string _serialized)
+{
+	setSerialized(_serialized);
+	deserialize();
+}
+
+void Serialized::innerClear()
+{
+	std::vector<std::string>::iterator vecIt;
+	std::vector<std::vector<std::string>*>::iterator vecVecIt;
+
+	//Clear all inner vectors, leaving data structure
+	for (vecVecIt = vecVec.begin(); vecVecIt != vecVec.end(); vecVecIt++)
+	{
+		(*vecVecIt)->clear();
+	}
+}
+
+void Serialized::destroy()
+{
+	innerClear();
+	vecVec.clear();
+}
+
+void Serialized::build()
+{
+	
 }
