@@ -1,0 +1,92 @@
+class Serialized
+{
+protected:
+	const char categoryDelim = '~';
+	const char elemDelim = '|';
+	const std::string delims = "~|";
+
+	void destroy();
+	void innerClear();
+
+
+	//Vector of (Vector of Strings)pointers for de/serializing
+	std::vector<std::vector<std::string>*> vecVec;
+
+	std::string serialized;
+
+	std::vector<std::string> type;
+
+	virtual void setType() = 0;
+	virtual void loadVecs() = 0;
+	virtual void build() = 0;
+
+public:
+	Serialized();
+	~Serialized();
+
+	void setSerialized(std::string);
+	std::string getSerialized();
+
+	virtual void serialize();
+	virtual void deserialize();
+	virtual void deserialize(std::string);
+
+	virtual void print() = 0;
+};
+
+void Serialized::deserialize()
+{
+	if (!serialized.empty())
+	{
+		//Iterators for maneuvering throuhgh data
+		std::vector<std::string>::iterator vecIt;
+		std::vector<std::vector<std::string>*>::iterator vecVecIt;
+
+		vecVecIt = vecVec.begin();
+		vecIt = (*vecVecIt)->begin();
+
+		//Make sure the container is empty
+		innerClear();
+
+		//Make a string of delimiters for searching purposes
+		std::string delims;
+		delims.push_back(categoryDelim);
+		delims.push_back(elemDelim);
+
+		//Delimiter placeholders
+		//innerNext and outterNext are assigned the position of the delimiter
+		//innerPrev and outterPrev are first used to calculate the length of the element by (next - prev)
+		//innerPrev and outterPrev are then set to the first character AFTER the previous delimiter
+		//and become the next starting point for a substring search
+		size_t innerPrev = 0;
+		size_t innerNext = 0;
+
+		size_t outterPrev = 0;
+		size_t outterNext = 0;
+
+		size_t elemStart;
+		size_t elemLength;
+		size_t offset;		 //difference between innerPrev and next non-delim character
+
+		//Check to see whether there is another category delimter after the previous
+		while ((outterNext = serialized.find_first_of(categoryDelim, outterPrev)) != std::string::npos)
+		{
+			//Check to see whether there are more characters or category delimiters after the previous
+			while ((innerNext = serialized.find_first_of(elemDelim, innerPrev)) != std::string::npos && (innerNext < serialized.find_first_of(categoryDelim, outterPrev)))
+			{
+				//find where the actual element string exists
+				elemStart = serialized.find_first_not_of(delims, innerPrev);
+				offset = elemStart - innerPrev;
+				elemLength = innerNext - innerPrev - offset;
+
+				//Add the element to the current inner vector
+				(*vecVecIt)->push_back(serialized.substr(elemStart, elemLength));
+				innerPrev = innerNext + 1;
+			}
+			//Advance to the next category delimiter and inner vector
+			outterPrev = outterNext + 1;
+			if (vecVecIt != vecVec.end())
+				vecVecIt++;
+		}
+	}
+}
