@@ -1,41 +1,37 @@
+#include <vector>
+#include <iostream>
+#include <limits>
+
+using namespace std;
+
 class Serialized
 {
 protected:
-	const char categoryDelim = '~';
-	const char elemDelim = '|';
-	const std::string delims = "~|";
+	const char outerDelimiter = '~';
+	const char innerDelimiter = '|';
+	const string delims = "~|";
 
 	void destroy();
 	void innerClear();
 
-
 	//Vector of (Vector of Strings)pointers for de/serializing
-	std::vector<std::vector<std::string>*> vecVec;
+	vector<vector<string>*> outerVector;
 
-	std::string serialized;
-
-	std::vector<std::string> type;
-
-	virtual void setType() = 0;
-	virtual void loadVecs() = 0;
-	virtual void build() = 0;
+	string serialized;
 
 public:
 	Serialized();
 	~Serialized();
 
-	void setSerialized(std::string);
-	std::string getSerialized();
+	void setSerialized(string);
+	string getSerialized();
 
 	virtual void serialize();
 	virtual void deserialize();
-	virtual void deserialize(std::string);
+	virtual void deserialize(string);
 
 	virtual void print() = 0;
 };
-
-#include <iostream>
-#include <limits>
 
 Serialized::Serialized()
 {
@@ -47,94 +43,94 @@ Serialized::~Serialized()
 
 }
 
-void Serialized::setSerialized(std::string _serialized)
+void Serialized::setSerialized(string _serialized)
 {
 	serialized = _serialized;
 }
 
-std::string Serialized::getSerialized()
+string Serialized::getSerialized()
 {
 	return serialized;
 }
 
-void Serialized::serialize() 
+void Serialized::serialize()
 {
-	std::vector<std::string>::iterator vecIt;
-	std::vector<std::vector<std::string>*>::iterator vecVecIt;
+	vector<string>::iterator innerIterator;
+	vector<vector<string>*>::iterator outerIterator;
 
 	//Iterate over outter vector adding category delimiter after each inner vector
-	for (vecVecIt = vecVec.begin(); vecVecIt != vecVec.end(); ++vecVecIt)
+	for (outerIterator = outerVector.begin(); outerIterator != outerVector.end(); ++outerIterator)
 	{
 		//Iterate over inner vectors, adding element delimiter after each string 
-		//for (vecIt = (*vecVecIt)->begin(); vecIt != (*vecVecIt)->end(); ++vecIt)
-		vecIt = (*vecVecIt)->begin();
-		while (vecIt != (*vecVecIt)->end())
+		innerIterator = (*outerIterator)->begin();
+		while (innerIterator != (*outerIterator)->end())
 		{
-			serialized += *vecIt + elemDelim;
-			vecIt++;
+			serialized += *innerIterator + innerDelimiter;
+			innerIterator++;
 		}
-		serialized += categoryDelim;
+		serialized += outerDelimiter;
 	}
 }
 
 void Serialized::deserialize()
 {
-	if (!serialized.empty())
+	if (serialized.empty()) {return;}
+	else 
 	{
-		//Iterators for maneuvering throuhgh data
-		std::vector<std::string>::iterator vecIt;
-		std::vector<std::vector<std::string>*>::iterator vecVecIt;
+		//Iterators for maneuvering through storage targets
+		vector<string>::iterator innerIterator;
+		vector<vector<string>*>::iterator outerIterator;
 
-		vecVecIt = vecVec.begin();
-		vecIt = (*vecVecIt)->begin();
+		outerIterator = outerVector.begin();
+		innerIterator = (*outerIterator)->begin();
 
 		//Make sure the container is empty
 		innerClear();
 
 		//Make a string of delimiters for searching purposes
-		std::string delims;
-		delims.push_back(categoryDelim);
-		delims.push_back(elemDelim);
+		string delims;
+		delims.push_back(outerDelimiter);
+		delims.push_back(innerDelimiter);
 
-		//Delimiter placeholders
-		//innerNext and outterNext are assigned the position of the delimiter
-		//innerPrev and outterPrev are first used to calculate the length of the element by (next - prev)
-		//innerPrev and outterPrev are then set to the first character AFTER the previous delimiter
-		//and become the next starting point for a substring search
-		size_t innerPrev = 0;
-		size_t innerNext = 0;
+		//Location placeholders
+		size_t innerStart = 0;
+		size_t innerEnd = serialized.find_first_of(innerDelimiter, innerStart);
 
-		size_t outterPrev = 0;
-		size_t outterNext = 0;
+		size_t outerStart = 0;
+		size_t outerEnd = serialized.find_first_of(outerDelimiter, outerStart);
 
 		size_t elemStart;
 		size_t elemLength;
-		size_t offset;		 //difference between innerPrev and next non-delim character
+		size_t offset;		 //difference between innerStart and next non-delim character
 
-		//Check to see whether there is another category delimter after the previous
-		while ((outterNext = serialized.find_first_of(categoryDelim, outterPrev)) != std::string::npos)
+		while (outerEnd != string::npos)
 		{
-			//Check to see whether there are more characters or category delimiters after the previous
-			while ((innerNext = serialized.find_first_of(elemDelim, innerPrev)) != std::string::npos && (innerNext < serialized.find_first_of(categoryDelim, outterPrev)))
+			while (innerEnd != string::npos && (innerEnd < outerEnd))
 			{
 				//find where the actual element string exists
-				elemStart = serialized.find_first_not_of(delims, innerPrev);
-				offset = elemStart - innerPrev;
-				elemLength = innerNext - innerPrev - offset;
+				elemStart = serialized.find_first_not_of(delims, innerStart);
+				offset = elemStart - innerStart;
+				elemLength = innerEnd - innerStart - offset;
 
 				//Add the element to the current inner vector
-				(*vecVecIt)->push_back(serialized.substr(elemStart, elemLength));
-				innerPrev = innerNext + 1;
+				(*outerIterator)->push_back(serialized.substr(elemStart, elemLength));
+				innerStart = innerEnd + 1;
+
+				//Check to see whether there are more characters or category delimiters after the previous
+				innerEnd = serialized.find_first_of(innerDelimiter, innerStart);
 			}
-			//Advance to the next category delimiter and inner vector
-			outterPrev = outterNext + 1;
-			if (vecVecIt != vecVec.end())
-				vecVecIt++;
+			//Advance to the next outer delimiter and inner vector
+			outerStart = outerEnd + 1;
+			if (outerIterator != outerVector.end())
+				outerIterator++;
+
+		//Check to see whether there is another category delimter after the previous
+		outerEnd = serialized.find_first_of(outerDelimiter, outerStart);
 		}
 	}
 }
 
-void Serialized::deserialize(std::string _serialized)
+void Serialized::deserialize(string _serialized)
 {
 	setSerialized(_serialized);
 	deserialize();
@@ -142,23 +138,18 @@ void Serialized::deserialize(std::string _serialized)
 
 void Serialized::innerClear()
 {
-	std::vector<std::string>::iterator vecIt;
-	std::vector<std::vector<std::string>*>::iterator vecVecIt;
+	vector<string>::iterator innerIterator;
+	vector<vector<string>*>::iterator outerIterator;
 
 	//Clear all inner vectors, leaving data structure
-	for (vecVecIt = vecVec.begin(); vecVecIt != vecVec.end(); vecVecIt++)
+	for (outerIterator = outerVector.begin(); outerIterator != outerVector.end(); outerIterator++)
 	{
-		(*vecVecIt)->clear();
+		(*outerIterator)->clear();
 	}
 }
 
 void Serialized::destroy()
 {
 	innerClear();
-	vecVec.clear();
-}
-
-void Serialized::build()
-{
-	
+	outerVector.clear();
 }
