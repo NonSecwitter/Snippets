@@ -7,17 +7,15 @@ using namespace std;
 class Serialized
 {
 protected:
+	string serialized;
+
 	const char outerDelimiter = '~';
 	const char innerDelimiter = '|';
 	const string delims = "~|";
 
-	void destroy();
-	void innerClear();
+	void deepClean();
 
-	//Vector of (Vector of Strings)pointers for de/serializing
 	vector<vector<string>*> outerVector;
-
-	string serialized;
 
 public:
 	Serialized();
@@ -58,15 +56,11 @@ void Serialized::serialize()
 	vector<string>::iterator innerIterator;
 	vector<vector<string>*>::iterator outerIterator;
 
-	//Iterate over outter vector adding category delimiter after each inner vector
 	for (outerIterator = outerVector.begin(); outerIterator != outerVector.end(); ++outerIterator)
 	{
-		//Iterate over inner vectors, adding element delimiter after each string 
-		innerIterator = (*outerIterator)->begin();
-		while (innerIterator != (*outerIterator)->end())
+		for (innerIterator = (*outerIterator)->begin(); innerIterator != (*outerIterator)->end(); ++innerIterator)
 		{
 			serialized += *innerIterator + innerDelimiter;
-			innerIterator++;
 		}
 		serialized += outerDelimiter;
 	}
@@ -85,7 +79,7 @@ void Serialized::deserialize()
 		innerIterator = (*outerIterator)->begin();
 
 		//Make sure the container is empty
-		innerClear();
+		deepClean();
 
 		//Make a string of delimiters for searching purposes
 		string delims;
@@ -93,39 +87,36 @@ void Serialized::deserialize()
 		delims.push_back(innerDelimiter);
 
 		//Location placeholders
-		size_t innerStart = 0;
-		size_t innerEnd = serialized.find_first_of(innerDelimiter, innerStart);
+		size_t stringStart = 0;
+		size_t stringEnd = serialized.find_first_of(outerDelimiter, stringStart);
 
-		size_t outerStart = 0;
-		size_t outerEnd = serialized.find_first_of(outerDelimiter, outerStart);
+		size_t subStringStart = 0;
+		size_t subStringEnd = serialized.find_first_of(innerDelimiter, subStringStart);
+		
+		size_t firstChar;
+		size_t subStringLength;
 
-		size_t elemStart;
-		size_t elemLength;
-		size_t offset;		 //difference between innerStart and next non-delim character
-
-		while (outerEnd != string::npos)
+		while (stringEnd != string::npos)
 		{
-			while (innerEnd != string::npos && (innerEnd < outerEnd))
+			while (subStringEnd != string::npos && (subStringEnd < stringEnd))
 			{
-				//find where the actual element string exists
-				elemStart = serialized.find_first_not_of(delims, innerStart);
-				offset = elemStart - innerStart;
-				elemLength = innerEnd - innerStart - offset;
+				firstChar = serialized.find_first_not_of(delims, subStringStart);
+				subStringLength = subStringEnd - firstChar;
 
 				//Add the element to the current inner vector
-				(*outerIterator)->push_back(serialized.substr(elemStart, elemLength));
-				innerStart = innerEnd + 1;
+				(*outerIterator)->push_back(serialized.substr(firstChar, subStringLength));
+				subStringStart = subStringEnd + 1;
 
 				//Check to see whether there are more characters or category delimiters after the previous
-				innerEnd = serialized.find_first_of(innerDelimiter, innerStart);
+				subStringEnd = serialized.find_first_of(innerDelimiter, subStringStart);
 			}
 			//Advance to the next outer delimiter and inner vector
-			outerStart = outerEnd + 1;
+			stringStart = stringEnd + 1;
 			if (outerIterator != outerVector.end())
 				outerIterator++;
 
 		//Check to see whether there is another category delimter after the previous
-		outerEnd = serialized.find_first_of(outerDelimiter, outerStart);
+		stringEnd = serialized.find_first_of(outerDelimiter, stringStart);
 		}
 	}
 }
@@ -136,7 +127,7 @@ void Serialized::deserialize(string _serialized)
 	deserialize();
 }
 
-void Serialized::innerClear()
+void Serialized::deepClean()
 {
 	vector<string>::iterator innerIterator;
 	vector<vector<string>*>::iterator outerIterator;
@@ -146,10 +137,6 @@ void Serialized::innerClear()
 	{
 		(*outerIterator)->clear();
 	}
-}
 
-void Serialized::destroy()
-{
-	innerClear();
 	outerVector.clear();
 }
