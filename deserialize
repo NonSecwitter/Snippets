@@ -68,10 +68,9 @@ void Serialized::serialize()
 
 void Serialized::deserialize()
 {
-	if (serialized.empty()) {return;}
+	if (serialized.empty()) {}
 	else 
 	{
-		//Iterators for maneuvering through storage targets
 		vector<string>::iterator innerIterator;
 		vector<vector<string>*>::iterator outerIterator;
 
@@ -107,15 +106,15 @@ void Serialized::deserialize()
 				(*outerIterator)->push_back(serialized.substr(firstChar, subStringLength));
 				subStringStart = subStringEnd + 1;
 
-				//Check to see whether there are more characters or category delimiters after the previous
+				//Check for additional subString delimiter
 				subStringEnd = serialized.find_first_of(innerDelimiter, subStringStart);
 			}
-			//Advance to the next outer delimiter and inner vector
+			//Advance to the next outer string delimiter and inner vector
 			stringStart = stringEnd + 1;
 			if (outerIterator != outerVector.end())
 				outerIterator++;
 
-		//Check to see whether there is another category delimter after the previous
+		//Check for outer string delimiter
 		stringEnd = serialized.find_first_of(outerDelimiter, stringStart);
 		}
 	}
